@@ -2,6 +2,7 @@ import os
 import aws_cdk as cdk
 from aws_cdk import (
     Stack,
+    Tags,
     aws_dynamodb as dynamodb,
     aws_lambda as lambda_,
     aws_apigateway as apigateway,
@@ -24,7 +25,7 @@ class BookstoreStack(Stack):
         books_table = dynamodb.Table(
             self,
             "BooksTable",
-            table_name="Books",
+            table_name="bookstore-books",
             partition_key=dynamodb.Attribute(
                 name="bookId", type=dynamodb.AttributeType.STRING
             ),
@@ -56,6 +57,7 @@ class BookstoreStack(Stack):
         create_book_fn = lambda_.Function(
             self,
             "CreateBookFunction",
+            function_name="bookstore-create-book",
             handler="create_book.handler",
             description="Create a new book entry",
             **lambda_defaults,
@@ -64,6 +66,7 @@ class BookstoreStack(Stack):
         search_books_fn = lambda_.Function(
             self,
             "SearchBooksFunction",
+            function_name="bookstore-search-books",
             handler="search_books.handler",
             description="Search / list books",
             **lambda_defaults,
@@ -72,6 +75,7 @@ class BookstoreStack(Stack):
         delete_book_fn = lambda_.Function(
             self,
             "DeleteBookFunction",
+            function_name="bookstore-delete-book",
             handler="delete_book.handler",
             description="Delete a book by ID",
             **lambda_defaults,
@@ -86,7 +90,7 @@ class BookstoreStack(Stack):
         api = apigateway.RestApi(
             self,
             "BookstoreApi",
-            rest_api_name="BookstoreAPI",
+            rest_api_name="bookstore-api",
             description="Bookstore REST API",
             default_cors_preflight_options=apigateway.CorsOptions(
                 allow_origins=apigateway.Cors.ALL_ORIGINS,
@@ -112,6 +116,7 @@ class BookstoreStack(Stack):
         frontend_bucket = s3.Bucket(
             self,
             "FrontendBucket",
+            bucket_name=cdk.Fn.join("-", ["bookstore-frontend", cdk.Aws.ACCOUNT_ID, cdk.Aws.REGION]),
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
             removal_policy=RemovalPolicy.DESTROY,
             auto_delete_objects=True,
@@ -122,6 +127,7 @@ class BookstoreStack(Stack):
         oac = cloudfront.S3OriginAccessControl(
             self,
             "OAC",
+            origin_access_control_name="bookstore-oac",
             signing=cloudfront.Signing.SIGV4_NO_OVERRIDE,
         )
 
@@ -180,3 +186,6 @@ class BookstoreStack(Stack):
             value=frontend_bucket.bucket_name,
             description="S3 Bucket for frontend",
         )
+
+        # ── Tags ──────────────────────────────────────────────────────────────
+        Tags.of(self).add("name", "bookstore")
